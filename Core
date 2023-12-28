@@ -1,0 +1,64 @@
+<?php
+
+declare(strict_types=1);
+
+namespace juqn\betterreclaims\reclaim;
+
+use hcf\util\serialize\Serialize;
+use JetBrains\PhpStorm\ArrayShape;
+use pocketmine\item\Item;
+use pocketmine\permission\DefaultPermissions;
+use pocketmine\permission\Permission;
+use pocketmine\permission\PermissionManager;
+
+final class Reclaim {
+
+    /**
+     * @param int $cooldown
+     * @param Item[] $content
+     * @param string|null $permission
+     */
+    public function __construct(
+        private int $cooldown,
+        private array $content = [],
+        private ?string $permission = null
+    ) {
+        if ($this->permission !== null) {
+            $permissionManager = PermissionManager::getInstance();
+            $permissionManager->addPermission(new Permission($this->permission));
+            $permissionManager->getPermission(DefaultPermissions::ROOT_OPERATOR)->addChild($this->permission, true);
+        }
+    }
+
+    public function getCooldown(): int {
+        return $this->cooldown;
+    }
+
+    public function getContent(): array {
+        return $this->content;
+    }
+
+    public function getPermission(): ?string {
+        return $this->permission;
+    }
+
+    public function setContent(array $content): void {
+        $this->content = $content;
+    }
+
+    public function setPermission(?string $permission): void {
+        $this->permission = $permission;
+    }
+
+    #[ArrayShape(['cooldown' => "int", 'content' => "array|\int[][]|\mixed[][]", 'permission' => "null|string"])] public function serializeData(): array {
+        return [
+            'cooldown' => $this->cooldown,
+            'content' => array_map(fn(Item $item) => Serialize::serialize($item), $this->content),
+            'permission' => $this->permission
+        ];
+    }
+
+    public static function deserializeData(array $data): self {
+        return new self((int) $data['cooldown'], array_map(fn($itemData) => Serialize::deserialize($itemData), $data['content']), $data['permission']);
+    }
+}
